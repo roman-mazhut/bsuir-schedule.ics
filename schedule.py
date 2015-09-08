@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import re
 import requests
+from optparse import OptionParser
 from datetime import datetime, timedelta
 from icalendar import Calendar, Event
 import xml.etree.ElementTree as ET
@@ -92,13 +93,28 @@ def build_ics(group_number, subgroup):
 
                 calendar.add_component(event)
 
+    return calendar.to_ical().replace('\\;', ';')
 
-    f = open('cal.ics', 'wb')
-    f.write(calendar.to_ical().replace('\\;', ';'))
+def write_to_file(filename, content):
+    f = open(filename, 'wb')
+    f.write(content)
     f.close()
 
 def main():
-    build_ics(110901, 2)
+    parser = OptionParser(usage="%prog -g <group> -s <subgroup>")
+    parser.add_option("-g", "--group", type="int", dest="group", help="Group number")
+    parser.add_option("-s", "--subgroup", type="int", dest="subgroup", help="Subgroup number")
+    parser.add_option("-o", "--output", type="str", dest="filename", help="Output file name")
+    (options, args) = parser.parse_args()
+    if options.group is None or options.subgroup is None:
+        parser.error("you must specify group and subgroup")
+    if options.subgroup not in [1, 2]:
+        parser.error("subgroup must be value 1 or 2")
+    calendar = build_ics(options.group, options.subgroup)
+    if options.filename is not None:
+        write_to_file(options.filename, calendar)
+    else:
+        print calendar
 
 if __name__ == '__main__':
     main()
