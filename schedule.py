@@ -39,6 +39,22 @@ def get_week_number():
     if result is not None:
         return int(result.group(1))
 
+def get_lesson_summary(lesson):
+    subject = lesson.find('subject').text
+    auditory = lesson.find('auditory').text
+    employee = lesson.find('employee')
+    employee_first_name = employee.find('firstName').text
+    employee_middle_name = employee.find('middleName').text
+    employee_last_name = employee.find('lastName').text
+    lesson_type = lesson.find('lessonType').text
+    return "%s %s %s %s %s. %s." % (
+        lesson_type,
+        subject,
+        auditory,
+        employee_last_name,
+        employee_first_name[0],
+        employee_middle_name[0],
+    )
 
 def build_ics(group_number, subgroup):
     calendar = Calendar()
@@ -53,21 +69,7 @@ def build_ics(group_number, subgroup):
                 if int(week_number.text) == 0:
                     continue
                 event = Event()
-                subject = lesson.find('subject').text
-                auditory = lesson.find('auditory').text
-                employee = lesson.find('employee')
-                employee_first_name = employee.find('firstName').text
-                employee_middle_name = employee.find('middleName').text
-                employee_last_name = employee.find('lastName').text
-                lesson_type = lesson.find('lessonType').text
-                summary = "%s %s %s %s %s. %s." % (
-                    lesson_type,
-                    subject,
-                    auditory,
-                    employee_last_name,
-                    employee_first_name[0],
-                    employee_middle_name[0],
-                )
+                summary = get_lesson_summary(lesson)
                 time_interval = lesson.find('lessonTime').text
                 name_of_day_of_week = day_of_week.find('weekDay').text.encode('utf-8')
                 # week number related to the current week
