@@ -57,11 +57,38 @@ def get_lesson_summary(lesson):
         employee_middle_name[0],
     )
 
+def get_time_interval(lesson, week_number, name_of_day_of_week):
+    localtime = datetime.now()
+    current_week = get_week_number()
+    time_interval = lesson.find('lessonTime').text
+    # week number related to the current week
+    delta_days = 7 * (int(week_number.text) - current_week)
+    # day of week related to the current day
+    delta_days += DAYS_OF_WEEK_LIST.index(name_of_day_of_week) - localtime.weekday()
+    time_start, time_end = map(
+        lambda t: datetime.strptime(t, "%H:%M").replace(
+            year=localtime.year,
+            month=localtime.month,
+            day=localtime.day
+        ) + timedelta(days=delta_days),
+        time_interval.split('-')
+    )
+    return time_start, time_end
+
+def get_event(lesson, week_number, day_of_week):
+    name_of_day_of_week = day_of_week.find('weekDay').text.encode('utf-8')
+    event = Event()
+    summary = get_lesson_summary(lesson)
+    time_start, time_end = get_time_interval(lesson, week_number, name_of_day_of_week)
+    event.add('summary', summary)
+    event.add('dtstart', time_start)
+    event.add('dtend', time_end)
+    event.add('rrule', 'FREQ=WEEKLY;BYDAY=%s;INTERVAL=4' % (DAYS_OF_WEEK[name_of_day_of_week],), encode=False)
+    return event
+
 def build_ics(group_number, subgroup):
     calendar = Calendar()
     xml_schedule = get_xml_group_schedule(group_number)
-    localtime = datetime.now()
-    current_week = get_week_number()
     for day_of_week in xml_schedule:
         for lesson in day_of_week.findall('schedule'):
             if int(lesson.find('numSubgroup').text) not in [0, subgroup]:
@@ -69,28 +96,7 @@ def build_ics(group_number, subgroup):
             for week_number in lesson.findall('weekNumber'):
                 if int(week_number.text) == 0:
                     continue
-                event = Event()
-                summary = get_lesson_summary(lesson)
-                time_interval = lesson.find('lessonTime').text
-                name_of_day_of_week = day_of_week.find('weekDay').text.encode('utf-8')
-                # week number related to the current week
-                delta_days = 7 * (int(week_number.text) - current_week)
-                # day of week related to the current day
-                delta_days += DAYS_OF_WEEK_LIST.index(name_of_day_of_week) - localtime.weekday()
-                time_start, time_end = map(
-                    lambda t: datetime.strptime(t, "%H:%M").replace(
-                        year=localtime.year,
-                        month=localtime.month,
-                        day=localtime.day
-                    ) + timedelta(days=delta_days),
-                    time_interval.split('-')
-                )
-                event.add('summary', summary)
-                event.add('dtstart', time_start)
-                event.add('dtend', time_end)
-                event.add('dtstamp', localtime)
-                event.add('rrule', 'FREQ=WEEKLY;BYDAY=%s;INTERVAL=4' % (DAYS_OF_WEEK[name_of_day_of_week],), encode=False)
-
+                event = get_event(lesson, week_number, day_of_week)
                 calendar.add_component(event)
 
     return calendar.to_ical().replace('\\;', ';')
